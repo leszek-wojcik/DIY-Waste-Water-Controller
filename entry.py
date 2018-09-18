@@ -1,10 +1,9 @@
-from machine import Pin, I2C, Timer
+import gc
+from html import *
+from machine import Timer
 import time
 import network
 import socket
-from DHT12 import DHT12
-from DS1302 import DS1302
-from html import html
 from WWC import WWC
 import ure
 import micropython
@@ -21,7 +20,7 @@ def timerExp(arg):
 
 
 tim = Timer(-1)
-tim.init(period=5000, callback=timerExp)
+tim.init(period=1000, callback=timerExp)
 
 datere = ure.compile("\/\?date=(\d\d\d\d)-(\d\d)-(\d\d)" )
 timere = ure.compile("\/\?time=(\d\d)\%3A(\d\d)")
@@ -31,76 +30,82 @@ reminderre = ure.compile("\/\?reminder=(\d\d\d\d)-(\d\d)-(\d\d)" )
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
-s.listen(5)
+s.listen(1)
 
 while True:
 
-    conn, addr = s.accept()
-    conn.setblocking(True)
-    print("Got a connection from %s" % str(addr))
-    request = conn.recv(1024)
-    print(request)
+    try:
+        conn, addr = s.accept()
+        conn.setblocking(True)
+        request = conn.recv(512)
+        print(request)
 
+        for i in request.split():
 
-    for i in request.split():
-        result = datere.match(i)
-        if(result):
-            print("found date")
-            year, month, day, hour, minutes, seconds = controller.rtc.read_datetime()
-            year = int( result.group(1))
-            month = int( result.group(2))
-            day = int(result.group(3))
-            controller.rtc.write_datetime (year,month,day,hour,minutes,seconds)
-            break
+            result = datere.match(i)
+            if(result):
+                year, month, day, hour, minutes, seconds = controller.rtc.read_datetime()
+                year = int( result.group(1))
+                month = int( result.group(2))
+                day = int(result.group(3))
+                controller.rtc.write_datetime (year,month,day,hour,minutes,seconds)
+                controller.checkControl()
+                break
 
-        result = timere.match(i)
-        if(result):
-            print("found time")
-            print(result.group(1))
-            print(result.group(2))
-            year, month, day, hour, minutes, seconds = controller.rtc.read_datetime()
-            hour = int( result.group(1))
-            minutes = int( result.group(2))
-            controller.rtc.write_datetime (year,month,day,hour,minutes,0)
-            break
+            result = timere.match(i)
+            if(result):
+                year, month, day, hour, minutes, seconds = controller.rtc.read_datetime()
+                hour = int( result.group(1))
+                minutes = int( result.group(2))
+                controller.rtc.write_datetime (year,month,day,hour,minutes,0)
+                controller.checkControl()
+                break
 
-        result = controlmethodre.match(i)
-        if(result):
-            print("found control_method")
-            print(controller.manual_control)
-            if (result.group(1) == b'auto'):
-                controller.manual_control = False
-            elif (result.group(1) == b'manual'):
-                controller.manual_control = True
-            break
+            result = controlmethodre.match(i)
+            if(result):
+                if (result.group(1) == b'auto'):
+                    controller.manual_control = False
+                elif (result.group(1) == b'manual'):
+                    controller.manual_control = True
+                controller.checkControl()
+                break
 
-        result = controlre.match(i)
-        if(result):
-            print("found control")
-            if(result.group(1) == b'circulation'):
-                controller.manual_circulation = not controller.manual_circulation
-            if(result.group(1) == b'areation'):
-                controller.manual_areation = not controller.manual_areation
-            break
+            result = controlre.match(i)
+            if(result):
+                if(result.group(1) == b'circulation'):
+                    controller.manual_circulation = not controller.manual_circulation
+                if(result.group(1) == b'areation'):
+                    controller.manual_areation = not controller.manual_areation
+                controller.checkControl()
+                break
 
-        result = reminderre.match(i)
-        if(result):
-            print("found reminder")
-            controller.db["year"] = result.group(1)
-            controller.db["month"] = result.group(2)
-            controller.db["day"] = result.group(3)
-            controller.db.flush()
-            break
+            result = reminderre.match(i)
+            if(result):
+                controller.db["year"] = result.group(1)
+                controller.db["month"] = result.group(2)
+                controller.db["day"] = result.group(3)
+                controller.db.flush()
+                controller.checkControl()
+                break
     
 
-    response = html % (str(controller.manual_control), str(controller.d3.value()), str(controller.d4.value()), str(controller.rtc.read_datetime()), controller.dht12.temperature(), controller.dht12.humidity(), controller.calculateServiceTime()  ) 
+        conn.write(html_head)
+        conn.write(html_left_column_head)
+        conn.write(html_left_column_manual_control % str(controller.manual_control))
+        conn.write(html_left_column_areation % str(controller.d3.value()))
+        conn.write(html_left_column_circulation % str(controller.d4.value()))
+        conn.write(html_left_column_controller_time % str(controller.rtc.read_datetime()))
+        conn.write(html_left_column_controller_temperature % controller.dht12.temperature())
+        conn.write(html_left_column_controller_humidity % controller.dht12.humidity())
+        conn.write(html_left_column_service_reminder % controller.calculateServiceTime() )
+        conn.write(html_left_column_end )
+        conn.write(html_right_column)
+        conn.write(html_footer)
+        conn.close()
+    except:
+        conn.close()
 
-
-    try:
-        conn.write(response)
-    except OSError:
-        machine.reset()
-
-    conn.close()
+    gc.collect()
+    print(gc.mem_free())
 
 

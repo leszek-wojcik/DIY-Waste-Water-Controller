@@ -1,11 +1,8 @@
 from machine import Pin, I2C, Timer
 import time
 import network
-import socket
 from DHT12 import DHT12
 from DS1302 import DS1302
-from html import html
-import ure
 import micropython
 import btree
 import machine
@@ -61,11 +58,20 @@ class WWC:
 
         self.db = btree.open(f)
 
-        self.areation_schedule = [  ("7:40","23:59"), 
-                          ("21:00","21:05") ]
+        self.areation_schedule = [  ("00:00","01:30"), 
+                                    ("02:00","03:30"),
+                                    ("04:00","05:30"),
+                                    ("06:00","07:30"),
+                                    ("08:00","09:30"),
+                                    ("10:00","11:30"),
+                                    ("12:00","13:30"),
+                                    ("14:00","15:30"),
+                                    ("16:00","17:30"),
+                                    ("18:00","19:30"),
+                                    ("20:00","21:30"),
+                                    ("22:00","23:30") ]
 
-        self.circulation_schedule = [("7:41","20:20"), 
-                          ("21:00","21:45") ]
+        self.circulation_schedule = [("23:40","23:55")]
 
 
     def checkControl(self):
