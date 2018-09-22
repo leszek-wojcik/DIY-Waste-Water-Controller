@@ -9,6 +9,7 @@ import ure
 import micropython
 import btree
 import machine
+import sys
 
 controller = WWC()
 
@@ -102,8 +103,15 @@ while True:
         conn.write(html_right_column)
         conn.write(html_footer)
         conn.close()
-    except:
+    except KeyboardInterrupt:
+        print ("stopping program and timers")
+        tim.deinit()
+        sys.exit(0)
+    except OSError:
+        print ("OSError")
         conn.close()
+    except:
+        machine.reset()
 
     gc.collect()
     print(gc.mem_free())

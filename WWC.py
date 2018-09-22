@@ -30,7 +30,9 @@ class WWC:
         print ("network initialization")
         self.sta_if =  network.WLAN(network.STA_IF)
         self.sta_if.active(True)
-        self.sta_if.connect("fcukgoogl","mostadvancedsec")
+        self.sta_if.connect("changeme","changeme")
+        self.ap_if = network.WLAN(network.AP_IF)
+        self.ap_if.config(essid='DIY_WWC', authmode=network.AUTH_WPA_WPA2_PSK, password="changeme")
         print(self.sta_if.ifconfig())
 
 

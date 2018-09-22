@@ -5,7 +5,7 @@ html_head = b"""
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/3/w3.css">
 
-<head> <title>DIY Waste Water Controller</title> </head>
+<head> <title>DIY Wastewater Controller</title> </head>
 
 <body class="w3-light-grey">
 
@@ -21,7 +21,7 @@ html_left_column_head = b"""
     
       <div class="w3-white w3-text-grey w3-card-4">
         <div class="w3-container">
-            <h1>DIY Waste Water Controller</h1>
+            <h1>DIY Wastewater Controller</h1>
         </div>
 
         <div class="w3-container">
