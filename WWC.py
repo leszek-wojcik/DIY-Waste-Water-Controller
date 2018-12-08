@@ -13,8 +13,6 @@ class WWC:
         print ("WWC initialization")
         self.d3 = Pin(0, Pin.OUT)
         self.d4 = Pin(2, Pin.OUT)
-        self.disableCirculation()
-        self.disableAreation()
 
         self.i2c = I2C(scl=Pin(5), sda=Pin(4), freq=100000)
 
@@ -28,30 +26,35 @@ class WWC:
         self.initRTC()
 
     def enableCirculation(self):
-        self.d4.off()
+        self.d4.on()
 
     def disableCirculation(self):
-        self.d4.on()
+        self.d4.off()
+
+    def getCirculation(self):
+        return bool(self.d4.value())
     
     def enableAreation(self):
         self.d3.off()
-        
+
     def disableAreation(self):
         self.d3.on()
+
+    def getAreation(self):
+        return not bool(self.d3.value())
 
 
     def initNetwork(self):
         print ("network initialization")
         self.sta_if =  network.WLAN(network.STA_IF)
         self.sta_if.active(True)
-        self.sta_if.connect("*****","*****")
+        self.sta_if.connect("fcukgoogl","hypersecpass")
         time.sleep(5) 
         print(self.sta_if.ifconfig())
-        self.ap_if = network.WLAN(network.AP_IF)
-        self.ap_if.config(essid='DIY_WWC', authmode=network.AUTH_WPA_WPA2_PSK, password="*****")
-        time.sleep(5) 
-        print(self.ap_if.ifconfig())
-
+#        self.ap_if = network.WLAN(network.AP_IF)
+#        self.ap_if.config(essid='DIY_WWC', authmode=network.AUTH_WPA_WPA2_PSK, password="hypersecpass")
+#        time.sleep(5) 
+#        print(self.ap_if.ifconfig())
 
     def initDht(self):
         print ("dht12 initialization")
@@ -65,6 +68,7 @@ class WWC:
         print ("RTC intialization")
         self.rtc = DS1307(self.i2c)
         print(self.rtc.read_datetime())
+
 
     def setAutoSchedule(self):
         print("Auto schedule")
@@ -105,10 +109,15 @@ class WWC:
         self.db.flush()
 
 
+    def getControl(self):
+        if self.manual_control:
+            return "Manual"
+        else:
+            return (self.db["sched"]).decode()
+
+
     def initDatabase(self):        
         print ("Database initialization")
-        gc.collect()
-        print(gc.mem_free())
         try:
             f = open("mydb", "r+b")
         except OSError:
@@ -122,8 +131,6 @@ class WWC:
             else:
                 self.setAutoSchedule()
         except KeyError:
-                self.setAutoSchedule()
-        except OSError:
                 self.setAutoSchedule()
 
 
