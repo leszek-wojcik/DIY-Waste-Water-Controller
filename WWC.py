@@ -1,9 +1,9 @@
+import gc
 from machine import Pin, I2C, Timer
 import time
 import network
 from DHT12 import DHT12
-from DS1302 import DS1302
-import micropython
+from DS1307 import DS1307
 import btree
 import machine
 
@@ -13,32 +13,48 @@ class WWC:
         print ("WWC initialization")
         self.d3 = Pin(0, Pin.OUT)
         self.d4 = Pin(2, Pin.OUT)
-        self.d3.off()
-        self.d4.off()
+        self.disableCirculation()
+        self.disableAreation()
+
+        self.i2c = I2C(scl=Pin(5), sda=Pin(4), freq=100000)
 
         self.manual_control = False;
         self.manual_circulation = False;
         self.manual_areation = False;
 
+        self.initDatabase()
         self.initNetwork()
         self.initDht()
         self.initRTC()
-        self.initDatabase()
+
+    def enableCirculation(self):
+        self.d4.off()
+
+    def disableCirculation(self):
+        self.d4.on()
+    
+    def enableAreation(self):
+        self.d3.off()
         
+    def disableAreation(self):
+        self.d3.on()
+
 
     def initNetwork(self):
         print ("network initialization")
         self.sta_if =  network.WLAN(network.STA_IF)
         self.sta_if.active(True)
-        self.sta_if.connect("changeme","changeme")
-        self.ap_if = network.WLAN(network.AP_IF)
-        self.ap_if.config(essid='DIY_WWC', authmode=network.AUTH_WPA_WPA2_PSK, password="changeme")
+        self.sta_if.connect("*****","*****")
+        time.sleep(5) 
         print(self.sta_if.ifconfig())
+        self.ap_if = network.WLAN(network.AP_IF)
+        self.ap_if.config(essid='DIY_WWC', authmode=network.AUTH_WPA_WPA2_PSK, password="*****")
+        time.sleep(5) 
+        print(self.ap_if.ifconfig())
 
 
     def initDht(self):
         print ("dht12 initialization")
-        self.i2c = I2C(scl=Pin(5), sda=Pin(4), freq=100000)
         self.dht12 = DHT12(self.i2c)
         self.dht12.measure()
         print (self.dht12.temperature())
@@ -47,85 +63,120 @@ class WWC:
 
     def initRTC(self):
         print ("RTC intialization")
-        self.rtc = DS1302()
+        self.rtc = DS1307(self.i2c)
         print(self.rtc.read_datetime())
+
+    def setAutoSchedule(self):
+        print("Auto schedule")
+        self.currentAreationSchedule = [ ("00:00","01:30"), 
+                                         ("02:00","03:30"),
+                                         ("04:00","05:30"),
+                                         ("06:00","07:30"),
+                                         ("08:00","09:30"),
+                                         ("10:00","11:30"),
+                                         ("12:00","13:30"),
+                                         ("14:00","15:30"),
+                                         ("16:00","17:30"),
+                                         ("18:00","19:30"),
+                                         ("20:00","21:30"),
+                                         ("22:00","23:30") ]
+
+        self.currentCirculationSchedule = [("23:40","23:55")]
+        self.db["sched"] = b"auto"
+        self.db.flush()
+
+    def setHolidaySchedule(self):
+        print("Holiday schedule")
+        self.currentAreationSchedule = [ ("00:00","01:00"), 
+                                         ("02:00","03:00"),
+                                         ("04:00","05:00"),
+                                         ("06:00","07:00"),
+                                         ("08:00","09:00"),
+                                         ("10:00","11:00"),
+                                         ("12:00","13:00"),
+                                         ("14:00","15:00"),
+                                         ("16:00","17:00"),
+                                         ("18:00","19:00"),
+                                         ("20:00","21:00"),
+                                         ("22:00","23:00") ]
+
+        self.currentCirculationSchedule = [("23:40","23:55")]
+        self.db["sched"] = b"holiday"
+        self.db.flush()
 
 
     def initDatabase(self):        
         print ("Database initialization")
+        gc.collect()
+        print(gc.mem_free())
         try:
             f = open("mydb", "r+b")
         except OSError:
             f = open("mydb", "w+b")
 
         self.db = btree.open(f)
-
-        self.areation_schedule = [  ("00:00","01:30"), 
-                                    ("02:00","03:30"),
-                                    ("04:00","05:30"),
-                                    ("06:00","07:30"),
-                                    ("08:00","09:30"),
-                                    ("10:00","11:30"),
-                                    ("12:00","13:30"),
-                                    ("14:00","15:30"),
-                                    ("16:00","17:30"),
-                                    ("18:00","19:30"),
-                                    ("20:00","21:30"),
-                                    ("22:00","23:30") ]
-
-        self.circulation_schedule = [("23:40","23:55")]
+    
+        try:
+            if (self.db["sched"] == b"holiday"):
+                self.setHolidaySchedule()
+            else:
+                self.setAutoSchedule()
+        except KeyError:
+                self.setAutoSchedule()
+        except OSError:
+                self.setAutoSchedule()
 
 
     def checkControl(self):
         year, month, day, hour, minutes, seconds = self.rtc.read_datetime()
         curtime = time.mktime( (year, month, day, hour, minutes, seconds, None, None))
 
-        areation_enable = False
-        circulation_enable = False
+        areation_enable_flag = False
+        circulation_enable_flag = False
 
-        for begin, end in self.areation_schedule:
+        for begin, end in self.currentAreationSchedule:
             begin = time.mktime ( 
                 (year,month,day , int(begin.split(':')[0]), int(begin.split(':')[1]), 0, None, None))
             end = time.mktime ( 
                 (year,month,day , int(end.split(':')[0]), int(end.split(':')[1]), 0, None, None))
 
             if begin < curtime < end:
-                areation_enable = True
+                areation_enable_flag = True
 
-        for begin, end in self.circulation_schedule:
+        for begin, end in self.currentCirculationSchedule:
             begin = time.mktime ( 
                 (year,month,day , int(begin.split(':')[0]), int(begin.split(':')[1]), 0, None, None))
             end = time.mktime ( 
                 (year,month,day , int(end.split(':')[0]), int(end.split(':')[1]), 0, None, None))
 
             if begin < curtime < end:
-                circulation_enable = True
+                circulation_enable_flag = True
 
 
         # Measure temperature and humidity
         self.dht12.measure()
         
         if (self.manual_control == False):
-            if (areation_enable):
-                self.d3.on()
+            if (areation_enable_flag):
+                self.enableAreation()
             else:
-                self.d3.off()
+                self.disableAreation()
 
-            if (circulation_enable):
-                self.d4.on()
+            if (circulation_enable_flag):
+                self.enableCirculation()
             else:
-                self.d4.off()
+                self.disableCirculation()
 
         else:
             if (self.manual_areation):
-                self.d3.on()
+                self.enableAreation()
             else:
-                self.d3.off()
+                self.disableAreation()
 
             if (self.manual_circulation):
-                self.d4.on()
+                self.enableCirculation()
             else:
-                self.d4.off()
+                self.disableCirculation()
 
 
     def calculateServiceTime(self):

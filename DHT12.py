@@ -9,9 +9,16 @@ class DHT12:
         self.buf = bytearray(5)
     def measure(self):
         buf = self.buf
-        self.i2c.readfrom_mem_into(self.addr, 0, buf)
-        if (buf[0] + buf[1] + buf[2] + buf[3]) & 0xff != buf[4]:
-            raise Exception("checksum error")
+        try:
+            self.i2c.readfrom_mem_into(self.addr, 0, buf)
+            if (buf[0] + buf[1] + buf[2] + buf[3]) & 0xff != buf[4]:
+                raise OSError("checksum error")
+        except OSError:
+            buf[0]=0
+            buf[1]=0
+            buf[2]=0
+            buf[3]=0
+
 
     def humidity(self):
         return self.buf[0] + self.buf[1] * 0.1

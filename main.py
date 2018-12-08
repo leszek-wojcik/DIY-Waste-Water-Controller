@@ -39,7 +39,7 @@ while True:
         conn, addr = s.accept()
         conn.setblocking(True)
         request = conn.recv(512)
-        print(request)
+        #print(request)
 
         for i in request.split():
 
@@ -66,8 +66,12 @@ while True:
             if(result):
                 if (result.group(1) == b'auto'):
                     controller.manual_control = False
+                    controller.setAutoSchedule()
                 elif (result.group(1) == b'manual'):
                     controller.manual_control = True
+                elif (result.group(1) == b'holiday'):
+                    controller.manual_control = False
+                    controller.setHolidaySchedule()
                 controller.checkControl()
                 break
 

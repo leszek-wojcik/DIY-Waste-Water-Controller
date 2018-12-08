@@ -128,6 +128,7 @@ html_right_column = b"""
                     <div class="w3-half w3-container">
                     <input class="w3-radio" type="radio" name="control_method" value="auto"> <label>Auto</label>
                     <input class="w3-radio" type="radio" name="control_method" value="manual"> <label>Manual</label>
+                    <input class="w3-radio" type="radio" name="control_method" value="holiday"> <label>Holiday</label>
                     </div>
                     <input class="w3-half w3-btn w3-teal w3-round-xlarge w3-block" type="submit" value="Set">
             </form>
